@@ -484,8 +484,9 @@
             const records = [];
             $('.student-card').each(function() {
                 const name = $(this).data('name');
+                const id = $(this).data('id'); // ดึงเลขที่
                 const status = $(this).attr('data-status');
-                if (status) records.push({ name: name, status: status });
+                if (status) records.push({ id: id, name: name, status: status });
             });
 
             if (records.length === 0) {
@@ -561,7 +562,7 @@
                                      type: "box",
                                      layout: "horizontal",
                                      contents: [
-                                         { type: "text", text: r.name, size: "xs", color: "#555555", flex: 3 },
+                                         { type: "text", text: `${r.id}. ${r.name}`, size: "xs", color: "#555555", flex: 3 },
                                          { type: "text", text: r.status, size: "xs", color: getColorForStatus(r.status), align: "end", flex: 1 }
                                      ]
                                  }))
