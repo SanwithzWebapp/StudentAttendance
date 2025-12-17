@@ -1,449 +1,621 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Student Attendance Pro</title>
 
-  <title>Student Attendance Check</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 1. Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 2. Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-
-  <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
-
-  <!-- Sweet Alert -->
-  <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <!-- Loading Overlay -->
-  <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
-
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai');
-
-    * {
-      box-sizing: border-box;
-      font-family: 'Noto Sans Thai', sans-serif;
-    }
-
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      background: rgb(252, 233, 233);
-      background: linear-gradient(0deg, rgba(252, 233, 233, 1) 0%, rgba(224, 244, 241, 1) 26%, rgba(255, 255, 255, 1) 71%);
-      -webkit-background-size: cover;
-      -moz-background-size: cover;
-      -o-background-size: cover;
-      flex-direction: column;
-    }
-
-    .list {
-      background-color: #ffffff;
-      padding: 1.8em 1.2em;
-      box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
-      border-radius: 0.6em;
-    }
-
-    footer {
-      margin-top: 10px;
-      background-color: #000;
-      width: 100%;
-      padding: 2px;
-      position: fixed;
-      bottom: 0;
-    }
-
-    footer p,
-    footer a {
-      text-decoration: none;
-      margin: 0;
-    }
-
-    footer .fa {
-      color: #fff740;
-    }
-  </style>
-</head>
-<body>
-  <center class="mb-4">
-    <img src="https://lh3.googleusercontent.com/d/1ZMI9FTcErAj1N8vh0viy3rAPnxZ7Zsky" class="mt-4" style="width:200px; height:auto; padding-bottom: 10px;">
-    <h2>Student Attendance Apps</h2>
-    <h5 class="text-center text-danger">สื่อ และนวัตกรรมครูสิทธิชาติ สิทธิ</h5>
-  </center>
-
-  <main class="container">
-    <div class="container list">
-      <div class="d-flex justify-content-center mb-3">
-        <button id="check-all-present" class="btn btn-primary me-2">มาทั้งหมด</button>
-        <button id="check-all-absent" class="btn btn-secondary">ขาดทั้งหมด</button>
-        <button id="check-all-leave" class="btn btn-warning ms-2">ลาทั้งหมด</button>
-        <button id="check-all-late" class="btn btn-danger ms-2">สายทั้งหมด</button>
-      </div>
-      <form id="attendance-form" class="mt-4">
-        <div class="row mb-3">
-          <label class="col-form-label">รายชื่อนักเรียน:</label>
-        </div>
-        <div id="student-list"></div>
-        <center><button type="submit" class="btn btn-primary mt-3">บันทึกข้อมูล</button></center>
-      </form>
-      <center><button id="send-summary" class="btn btn-success mt-3">แชร์ Flex message</button></center>
-    </div>
-  </main>
-
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/sanwithz/SetFooter/sanzwithz.js"></script>
-
-  <script>
-    let attendanceRecords = [];
-    const studentListUrl = 'https://opensheet.elk.sh/1frR8ktFEHXGUVbW1gKe62WpqTTdsttgtil4USA07w60/Name';
-
-    window.onload = function() {
-      // Initialize LIFF app with login required
-      liff.init({ liffId: '2006777381-3xedJogK' })
-        .then(() => {
-          if (!liff.isLoggedIn()) {
-            liff.login();
-          } else {
-            console.log('LIFF initialized');
-            // Fetch student list and generate form
-            fetchStudentList();
-            // Add event listeners
-            document.getElementById('attendance-form').addEventListener('submit', addAttendanceRecord);
-            document.getElementById('send-summary').addEventListener('click', sendSummary);
-            document.getElementById('check-all-present').addEventListener('click', () => checkAll('มา'));
-            document.getElementById('check-all-absent').addEventListener('click', () => checkAll('ขาด'));
-            document.getElementById('check-all-leave').addEventListener('click', () => checkAll('ลา'));
-            document.getElementById('check-all-late').addEventListener('click', () => checkAll('สาย'));
-          }
-        })
-        .catch((err) => {
-          console.error('Error initializing LIFF: ', err);
-          Swal.fire('Error', 'Failed to initialize LIFF: ' + err, 'error');
-        });
-    };
-
-    function fetchStudentList() {
-      fetch(studentListUrl)
-        .then(response => response.json())
-        .then(data => generateStudentList(data))
-        .catch(error => {
-          console.error('Error fetching student list: ', error);
-          Swal.fire('Error', 'Failed to fetch student list: ' + error, 'error');
-        });
-    }
-
-    function generateStudentList(students) {
-      const studentList = document.getElementById('student-list');
-      students.forEach(student => {
-        const studentRow = document.createElement('div');
-        studentRow.className = 'row mb-3';
-        studentRow.innerHTML = `
-          <div class="col-6">
-            <label class="form-label">${student['เลขที่']}. ${student['รายชื่อนักเรียน']}</label>
-          </div>
-          <div class="col-1">
-            <label>
-              <input type="radio" name="student${student['เลขที่']}" value="มา" required> มา
-            </label>
-          </div>
-          <div class="col-1">
-            <label>
-              <input type="radio" name="student${student['เลขที่']}" value="ขาด" required> ขาด
-            </label>
-          </div>
-          <div class="col-1">
-            <label>
-              <input type="radio" name="student${student['เลขที่']}" value="ลา" required> ลา
-            </label>
-          </div>
-          <div class="col-1">
-            <label>
-              <input type="radio" name="student${student['เลขที่']}" value="สาย" required> สาย
-            </label>
-          </div>
-        `;
-        studentList.appendChild(studentRow);
-      });
-    }
-
-    $(document).ready(function() {
-      setFooter();
-    });
-
-    function checkAll(status) {
-      const studentList = document.getElementById('student-list');
-      const radios = studentList.querySelectorAll(`input[value="${status}"]`);
-      radios.forEach(radio => radio.checked = true);
-    }
-
-    function addAttendanceRecord(event) {
-      event.preventDefault();
-      attendanceRecords = [];
-      let allSelected = true;
-
-      const studentList = document.getElementById('student-list');
-      const studentRows = studentList.querySelectorAll('.row');
-
-      studentRows.forEach(row => {
-        const studentName = row.querySelector('.form-label').innerText.replace(/:$/, '');
-        const studentStatusElement = row.querySelector('input:checked');
-
-        if (studentStatusElement) {
-          const studentStatus = studentStatusElement.value;
-          attendanceRecords.push({ name: studentName, status: studentStatus });
-        } else {
-          allSelected = false;
-        }
-      });
-
-      if (allSelected) {
-        saveToSheet(attendanceRecords);
-        // document.getElementById('attendance-form').reset();
-      } else {
-        Swal.fire('Error', 'Please fill in the attendance status for all students!', 'error');
-      }
-    }
-
-    function saveToSheet(records) {
-      $.LoadingOverlay("show");
-
-      const url = 'https://script.google.com/macros/s/AKfycbwSEyJvw8wDpQHd4zwJjbqZ8LIihz2MP_sCd0BqjAv9_B4pBZB84DSxg-x0LTQpLcHn8g/exec'; // Replace with your web app URL
-
-      $.post(url, JSON.stringify(records), function(data) {
-        $.LoadingOverlay("hide");
-        if (data.status === 'success') {
-          Swal.fire('Success', 'Attendance data saved to sheet!', 'success');
-        } else {
-          Swal.fire('Error', 'Failed to save attendance data!', 'error');
-        }
-      }).fail(function() {
-        $.LoadingOverlay("hide");
-        Swal.fire('Error', 'Failed to connect to the server!', 'error');
-      });
-    }
-
-    function formatThaiDate(date) {
-      const months = [
-        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-      ];
-      const day = date.getDate();
-      const month = months[date.getMonth()];
-      const year = date.getFullYear() + 543;
-      return `${day} ${month} ${year}`;
-    }
-
-    function sendSummary() {
-      if (attendanceRecords.length === 0) {
-        Swal.fire('Error', 'No attendance records to send!', 'error');
-        return;
-      }
-
-      const presentCount = attendanceRecords.filter(record => record.status === 'มา').length;
-      const absentCount = attendanceRecords.filter(record => record.status === 'ขาด').length;
-      const leaveCount = attendanceRecords.filter(record => record.status === 'ลา').length;
-      const lateCount = attendanceRecords.filter(record => record.status === 'สาย').length;
-      const totalCount = attendanceRecords.length;
-      const presentPercentage = ((presentCount / totalCount) * 100).toFixed(2);
-      const absentPercentage = ((absentCount / totalCount) * 100).toFixed(2);
-      const leavePercentage = ((leaveCount / totalCount) * 100).toFixed(2);
-      const latePercentage = ((lateCount / totalCount) * 100).toFixed(2);
-
-      const now = new Date();
-      const dateString = formatThaiDate(now);
-
-      let summaryText = `วันที่ ${dateString}\n`;
-      attendanceRecords.forEach(record => {
-        summaryText += `${record.name}: ${record.status}\n`;
-      });
-      summaryText += `\nมาเรียน: ${presentCount} คน คิดเป็น (${presentPercentage}%)\nขาดเรียน: ${absentCount} คน คิดเป็น (${absentPercentage}%)\nลา: ${leaveCount} คน คิดเป็น (${leavePercentage}%)\nสาย: ${lateCount} คน คิดเป็น (${latePercentage}%)`;
-
-      const flexMessage = {
-        type: 'flex',
-        altText: 'Attendance Summary',
-        contents: {
-          type: 'bubble',
-          size: 'giga',
-          body: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              {
-                type: 'text',
-                text: `สรุปการมาเรียน ม.5/13`,
-                weight: 'bold',
-                size: 'xl',
-                color: '#1DB446',
-                margin: 'md'
-              },
-              {
-                type: 'text',
-                text: `วันที่ ${dateString}`,
-                size: 'md',
-                color: '#888888'
-              },
-              {
-                type: 'separator',
-                margin: 'md'
-              },
-              {
-                type: 'box',
-                layout: 'vertical',
-                margin: 'md',
-                spacing: 'sm',
-                contents: attendanceRecords.map(record => ({
-                  type: 'box',
-                  layout: 'horizontal',
-                  contents: [
-                    {
-                      type: 'text',
-                      text: record.name,
-                      size: 'md',
-                      color: '#555555',
-                      flex: 4
+    <!-- 3. CSS Framework & Tailwind Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sarabun', 'sans-serif'],
+                        display: ['Prompt', 'sans-serif'],
                     },
-                    {
-                      type: 'text',
-                      text: record.status,
-                      size: 'md',
-                      color: record.status === 'มา' ? '#1DB446' : (record.status === 'ขาด' ? '#FF5555' : (record.status === 'ลา' ? '#FFC107' : '#FF8800')),
-                      flex: 2,
-                      align: 'end'
+                    colors: {
+                        primary: '#4F46E5',
+                        success: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
                     }
-                  ]
-                }))
-              },
-              {
-                type: 'separator',
-                margin: 'md'
-              },
-              {
-                type: 'box',
-                layout: 'vertical',
-                margin: 'md',
-                contents: [
-                  {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: 'มาเรียน:',
-                        size: 'md',
-                        color: '#1DB446',
-                        flex: 3
-                      },
-                      {
-                        type: 'text',
-                        text: `${presentCount} คน (${presentPercentage}%)`,
-                        size: 'md',
-                        color: '#1DB446',
-                        flex: 2,
-                        align: 'end'
-                      }
-                    ]
-                  },
-                  {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: 'ขาดเรียน:',
-                        size: 'md',
-                        color: '#FF5555',
-                        flex: 3
-                      },
-                      {
-                        type: 'text',
-                        text: `${absentCount} คน (${absentPercentage}%)`,
-                        size: 'md',
-                        color: '#FF5555',
-                        flex: 2,
-                        align: 'end'
-                      }
-                    ]
-                  },
-                  {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: 'ลา:',
-                        size: 'md',
-                        color: '#FFC107',
-                        flex: 3
-                      },
-                      {
-                        type: 'text',
-                        text: `${leaveCount} คน (${leavePercentage}%)`,
-                        size: 'md',
-                        color: '#FFC107',
-                        flex: 2,
-                        align: 'end'
-                      }
-                    ]
-                  },
-                  {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                      {
-                        type: 'text',
-                        text: 'สาย:',
-                        size: 'sm',
-                        color: '#FF8800',
-                        flex: 3
-                      },
-                      {
-                        type: 'text',
-                        text: `${lateCount} คน (${latePercentage}%)`,
-                        size: 'sm',
-                        color: '#FF8800',
-                        flex: 2,
-                        align: 'end'
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          styles: {
-            footer: {
-              separator: true
+                }
             }
-          }
         }
-      };
+    </script>
 
-      console.log(JSON.stringify(flexMessage)); // Debug log
+    <!-- 4. Logic & Utilities -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-      liff.shareTargetPicker([flexMessage])
-        .then((result) => {
-          if (result) {
-            Swal.fire('Success', 'Attendance summary shared successfully!', 'success');
-          } else {
-            Swal.fire('Info', 'ShareTargetPicker was closed without sending the message', 'info');
-          }
-          liff.closeWindow();
-        })
-        .catch((error) => {
-          console.error('Error sharing attendance summary: ', error);
-          Swal.fire('Error', 'Error sharing attendance summary: ' + error, 'error');
+    <style>
+        body {
+            background-color: #f3f4f6;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .status-btn:active {
+            transform: scale(0.95);
+        }
+
+        .student-card {
+            transition: all 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased pb-24">
+
+    <!-- Header Section -->
+    <header class="fixed top-0 w-full z-50 glass shadow-sm transition-all duration-300">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-200">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg leading-tight text-slate-800">Student Check</h1>
+                    <p class="text-xs text-slate-500 font-medium">ครูสิทธิชาติ สิทธิ</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span id="date-display" class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-3xl mx-auto px-4 mt-24">
+        
+        <!-- Stats Card -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-5 mb-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-50 rounded-full blur-2xl opacity-50"></div>
+            
+            <h3 class="font-display font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-500"></i> ภาพรวมวันนี้
+            </h3>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <!-- Chart -->
+                <div class="relative w-40 h-40 flex-shrink-0">
+                    <div id="attendanceChart"></div>
+                </div>
+                
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 w-full">
+                    <div class="bg-green-50 p-3 rounded-xl border border-green-100">
+                        <div class="text-xs text-green-600 font-semibold mb-1">มาเรียน</div>
+                        <div class="text-2xl font-bold text-green-700" id="count-present">0</div>
+                    </div>
+                    <div class="bg-red-50 p-3 rounded-xl border border-red-100">
+                        <div class="text-xs text-red-600 font-semibold mb-1">ขาดเรียน</div>
+                        <div class="text-2xl font-bold text-red-700" id="count-absent">0</div>
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                        <div class="text-xs text-yellow-600 font-semibold mb-1">ลากิจ/ป่วย</div>
+                        <div class="text-2xl font-bold text-yellow-700" id="count-leave">0</div>
+                    </div>
+                    <div class="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                        <div class="text-xs text-orange-600 font-semibold mb-1">มาสาย</div>
+                        <div class="text-2xl font-bold text-orange-700" id="count-late">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mb-6 overflow-x-auto pb-2 scrollbar-hide">
+            <div class="flex gap-2 min-w-max">
+                <button onclick="checkAll('มา')" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-600 shadow-sm hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-colors">
+                    <div class="w-2 h-2 rounded-full bg-green-500"></div> มาทั้งหมด
+                </button>
+                <button onclick="checkAll('ขาด')" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-600 shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors">
+                    <div class="w-2 h-2 rounded-full bg-red-500"></div> ขาดทั้งหมด
+                </button>
+                <button onclick="checkAll('ลา')" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-600 shadow-sm hover:bg-yellow-50 hover:text-yellow-600 hover:border-yellow-200 transition-colors">
+                    <div class="w-2 h-2 rounded-full bg-yellow-500"></div> ลาทั้งหมด
+                </button>
+                <button onclick="checkAll('สาย')" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-600 shadow-sm hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors">
+                    <div class="w-2 h-2 rounded-full bg-orange-500"></div> สายทั้งหมด
+                </button>
+                 <button onclick="resetAll()" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-100 transition-colors">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i> รีเซ็ต
+                </button>
+            </div>
+        </div>
+
+        <!-- Student List Container -->
+        <div id="student-list" class="space-y-4">
+            <!-- Skeleton Loader -->
+            <div class="animate-pulse space-y-4">
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+                <div class="h-24 bg-slate-200 rounded-xl"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Floating Action Bar -->
+    <div class="fixed bottom-0 left-0 w-full glass border-t border-slate-200 p-4 z-40 pb-safe">
+        <div class="max-w-3xl mx-auto flex gap-3">
+            <button id="save-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-display font-semibold py-3 rounded-xl shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 transition-transform active:scale-95">
+                <i data-lucide="save" class="w-5 h-5"></i> บันทึกข้อมูล
+            </button>
+            <button id="share-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-display font-semibold py-3 rounded-xl shadow-lg shadow-emerald-200 flex items-center justify-center gap-2 transition-transform active:scale-95">
+                <i data-lucide="share-2" class="w-5 h-5"></i> แชร์ Flex
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // --- Configuration ---
+        const CONFIG = {
+            liffId: '2006777381-3xedJogK',
+            sheetUrl: 'https://opensheet.elk.sh/1frR8ktFEHXGUVbW1gKe62WpqTTdsttgtil4USA07w60/Name',
+            scriptUrl: 'https://script.google.com/macros/s/AKfycbwSEyJvw8wDpQHd4zwJjbqZ8LIihz2MP_sCd0BqjAv9_B4pBZB84DSxg-x0LTQpLcHn8g/exec'
+        };
+
+        // --- State Management ---
+        let studentsData = [];
+        let chartInstance = null;
+
+        // --- Initialization ---
+        $(document).ready(function() {
+            lucide.createIcons();
+            initDate();
+            initChart();
+            initializeLiff();
         });
-    }
 
-  </script>
+        function initDate() {
+            const date = new Date();
+            const options = { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' };
+            document.getElementById('date-display').innerText = date.toLocaleDateString('th-TH', options);
+        }
 
-  <footer class="text-center text-lg-start bg-light text-muted" style="position: static; left: 0; bottom: 0; width: 100%;">
-    <div class="footer-container"></div>
-  </footer>
+        // --- Chart Logic ---
+        function initChart() {
+            const options = {
+                series: [0, 0, 0, 0],
+                labels: ['มา', 'ขาด', 'ลา', 'สาย'],
+                colors: ['#10B981', '#EF4444', '#F59E0B', '#F97316'],
+                chart: {
+                    type: 'donut',
+                    height: 180,
+                    fontFamily: 'Sarabun, sans-serif',
+                    animations: { enabled: true }
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'รวม',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#64748b',
+                                    formatter: function (w) {
+                                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: { enabled: false },
+                legend: { show: false },
+                stroke: { show: false }
+            };
+
+            chartInstance = new ApexCharts(document.querySelector("#attendanceChart"), options);
+            chartInstance.render();
+        }
+
+        function updateStats() {
+            let present = 0, absent = 0, leave = 0, late = 0;
+            
+            $('.student-card').each(function() {
+                const status = $(this).attr('data-status');
+                if (status === 'มา') present++;
+                else if (status === 'ขาด') absent++;
+                else if (status === 'ลา') leave++;
+                else if (status === 'สาย') late++;
+            });
+
+            // Update DOM
+            $('#count-present').text(present);
+            $('#count-absent').text(absent);
+            $('#count-leave').text(leave);
+            $('#count-late').text(late);
+
+            // Update Chart
+            chartInstance.updateSeries([present, absent, leave, late]);
+        }
+
+        // --- Core Functions ---
+        function initializeLiff() {
+            liff.init({ liffId: CONFIG.liffId })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                    } else {
+                        fetchStudents();
+                    }
+                })
+                .catch(err => {
+                    console.error('LIFF Error', err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'LIFF Init Failed',
+                        text: err.message
+                    });
+                    // Fallback for testing without LIFF
+                    fetchStudents(); 
+                });
+        }
+
+        function fetchStudents() {
+            $.LoadingOverlay("show");
+            fetch(CONFIG.sheetUrl)
+                .then(response => response.json())
+                .then(data => {
+                    studentsData = data;
+                    renderStudents(data);
+                    $.LoadingOverlay("hide");
+                })
+                .catch(error => {
+                    $.LoadingOverlay("hide");
+                    Swal.fire('Error', 'ไม่สามารถดึงข้อมูลนักเรียนได้', 'error');
+                });
+        }
+
+        function renderStudents(students) {
+            const container = document.getElementById('student-list');
+            container.innerHTML = '';
+
+            students.forEach((student, index) => {
+                const num = student['เลขที่'];
+                const name = student['รายชื่อนักเรียน'];
+                
+                const card = `
+                    <div class="student-card bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md" id="student-${num}" data-status="" data-name="${name}" data-id="${num}">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold font-display text-sm">
+                                    ${num}
+                                </div>
+                                <h4 class="font-semibold text-slate-700 text-lg">${name}</h4>
+                            </div>
+                            <div id="status-badge-${num}" class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-400">
+                                รอระบุ
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-4 gap-2">
+                            <button onclick="setStatus('${num}', 'มา')" class="status-btn btn-present-${num} py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:bg-green-50 hover:text-green-600 hover:border-green-200 flex flex-col items-center justify-center gap-1 group">
+                                <i class="fa-solid fa-check text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px]">มา</span>
+                            </button>
+                            <button onclick="setStatus('${num}', 'ขาด')" class="status-btn btn-absent-${num} py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 flex flex-col items-center justify-center gap-1 group">
+                                <i class="fa-solid fa-xmark text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px]">ขาด</span>
+                            </button>
+                            <button onclick="setStatus('${num}', 'ลา')" class="status-btn btn-leave-${num} py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:bg-yellow-50 hover:text-yellow-600 hover:border-yellow-200 flex flex-col items-center justify-center gap-1 group">
+                                <i class="fa-solid fa-envelope-open-text text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px]">ลา</span>
+                            </button>
+                            <button onclick="setStatus('${num}', 'สาย')" class="status-btn btn-late-${num} py-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 flex flex-col items-center justify-center gap-1 group">
+                                <i class="fa-solid fa-clock text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px]">สาย</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', card);
+            });
+            updateStats();
+        }
+
+        // --- Interaction Logic ---
+        function setStatus(id, status) {
+            const card = $(`#student-${id}`);
+            card.attr('data-status', status);
+            
+            // Reset buttons
+            card.find('.status-btn').removeClass('ring-2 ring-offset-1 text-white bg-green-500 bg-red-500 bg-yellow-500 bg-orange-500 border-transparent').addClass('bg-slate-50 text-slate-500 border-slate-200');
+            
+            // Activate selected button & Badge
+            const badge = $(`#status-badge-${id}`);
+            
+            let btnClass = '';
+            let colorClass = '';
+            let badgeColor = '';
+
+            switch(status) {
+                case 'มา': 
+                    btnClass = `.btn-present-${id}`; 
+                    colorClass = 'bg-green-500 text-white border-transparent ring-green-200';
+                    badgeColor = 'bg-green-100 text-green-700';
+                    break;
+                case 'ขาด': 
+                    btnClass = `.btn-absent-${id}`; 
+                    colorClass = 'bg-red-500 text-white border-transparent ring-red-200';
+                    badgeColor = 'bg-red-100 text-red-700';
+                    break;
+                case 'ลา': 
+                    btnClass = `.btn-leave-${id}`; 
+                    colorClass = 'bg-yellow-500 text-white border-transparent ring-yellow-200';
+                    badgeColor = 'bg-yellow-100 text-yellow-700';
+                    break;
+                case 'สาย': 
+                    btnClass = `.btn-late-${id}`; 
+                    colorClass = 'bg-orange-500 text-white border-transparent ring-orange-200';
+                    badgeColor = 'bg-orange-100 text-orange-700';
+                    break;
+            }
+
+            card.find(btnClass).removeClass('bg-slate-50 text-slate-500 border-slate-200').addClass(`${colorClass} ring-2 ring-offset-1`);
+            badge.removeClass().addClass(`text-xs font-bold px-2 py-1 rounded ${badgeColor}`).text(status);
+
+            updateStats();
+        }
+
+        function checkAll(status) {
+            $('.student-card').each(function() {
+                const id = $(this).data('id');
+                setStatus(id, status);
+            });
+        }
+
+        function resetAll() {
+            $('.student-card').each(function() {
+                 const id = $(this).data('id');
+                 $(this).attr('data-status', '');
+                 $(this).find('.status-btn').removeClass('ring-2 ring-offset-1 text-white bg-green-500 bg-red-500 bg-yellow-500 bg-orange-500 border-transparent').addClass('bg-slate-50 text-slate-500 border-slate-200');
+                 $(`#status-badge-${id}`).removeClass().addClass('text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-400').text('รอระบุ');
+            });
+            updateStats();
+        }
+
+        // --- Submission Logic ---
+        $('#save-btn').click(function() {
+            const records = [];
+            let incomplete = false;
+
+            $('.student-card').each(function() {
+                const name = $(this).data('name');
+                const status = $(this).attr('data-status');
+                if (!status) incomplete = true;
+                records.push({ name: name, status: status || 'ขาด' }); // Defaulting empty to 'Absent' or handle error
+            });
+
+            if (incomplete) {
+                Swal.fire({
+                    title: 'ข้อมูลไม่ครบ',
+                    text: "มีนักเรียนที่ยังไม่ได้ระบุสถานะ ต้องการบันทึกหรือไม่? (ค่าว่างจะเป็น 'ขาด')",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4F46E5',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'บันทึกเลย'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveToSheet(records);
+                    }
+                });
+            } else {
+                saveToSheet(records);
+            }
+        });
+
+        function saveToSheet(records) {
+            $.LoadingOverlay("show");
+            $.post(CONFIG.scriptUrl, JSON.stringify(records))
+            .done(function(data) {
+                $.LoadingOverlay("hide");
+                if (data.status === 'success') {
+                    fireConfetti();
+                    Swal.fire({
+                        title: 'สำเร็จ!',
+                        text: 'บันทึกข้อมูลเรียบร้อยแล้ว',
+                        icon: 'success',
+                        confirmButtonColor: '#4F46E5'
+                    });
+                } else {
+                    Swal.fire('Error', 'บันทึกไม่สำเร็จ', 'error');
+                }
+            })
+            .fail(function() {
+                $.LoadingOverlay("hide");
+                Swal.fire('Error', 'เชื่อมต่อ Server ไม่ได้', 'error');
+            });
+        }
+
+        // --- Flex Message Logic ---
+        $('#share-btn').click(function() {
+            const records = [];
+            $('.student-card').each(function() {
+                const name = $(this).data('name');
+                const status = $(this).attr('data-status');
+                if (status) records.push({ name: name, status: status });
+            });
+
+            if (records.length === 0) {
+                Swal.fire('แจ้งเตือน', 'กรุณาระบุสถานะก่อนแชร์', 'warning');
+                return;
+            }
+
+            const stats = {
+                present: records.filter(r => r.status === 'มา').length,
+                absent: records.filter(r => r.status === 'ขาด').length,
+                leave: records.filter(r => r.status === 'ลา').length,
+                late: records.filter(r => r.status === 'สาย').length,
+                total: records.length
+            };
+
+            const getPercent = (num) => ((num / stats.total) * 100).toFixed(2);
+            
+            const dateStr = new Date().toLocaleDateString('th-TH', { 
+                day: 'numeric', month: 'long', year: 'numeric' 
+            });
+
+            const flexMessage = {
+                type: 'flex',
+                altText: `สรุปการมาเรียน ${dateStr}`,
+                contents: {
+                    type: "bubble",
+                    body: {
+                        type: "box",
+                        layout: "vertical",
+                        contents: [
+                            {
+                                type: "text",
+                                text: "สรุปการมาเรียน",
+                                weight: "bold",
+                                color: "#1DB446",
+                                size: "xl"
+                            },
+                            {
+                                type: "text",
+                                text: `ประจำวันที่ ${dateStr}`,
+                                size: "xs",
+                                color: "#aaaaaa",
+                                wrap: true
+                            },
+                            { type: "separator", margin: "lg" },
+                            {
+                                type: "box",
+                                layout: "vertical",
+                                margin: "lg",
+                                spacing: "sm",
+                                contents: [
+                                    buildStatRow("มาเรียน", stats.present, getPercent(stats.present), "#10B981"),
+                                    buildStatRow("ขาดเรียน", stats.absent, getPercent(stats.absent), "#EF4444"),
+                                    buildStatRow("ลากิจ/ป่วย", stats.leave, getPercent(stats.leave), "#F59E0B"),
+                                    buildStatRow("มาสาย", stats.late, getPercent(stats.late), "#F97316")
+                                ]
+                            },
+                             { type: "separator", margin: "lg" },
+                             {
+                                type: "text",
+                                text: "รายชื่อนักเรียน:",
+                                margin: "md",
+                                weight: "bold",
+                                size: "sm"
+                             },
+                             {
+                                 type: "box",
+                                 layout: "vertical",
+                                 margin: "sm",
+                                 spacing: "xs",
+                                 contents: records.map(r => ({
+                                     type: "box",
+                                     layout: "horizontal",
+                                     contents: [
+                                         { type: "text", text: r.name, size: "xs", color: "#555555", flex: 3 },
+                                         { type: "text", text: r.status, size: "xs", color: getColorForStatus(r.status), align: "end", flex: 1 }
+                                     ]
+                                 }))
+                             }
+                        ]
+                    }
+                }
+            };
+
+            liff.shareTargetPicker([flexMessage])
+                .then((res) => {
+                    if (res) Swal.fire('แชร์สำเร็จ', '', 'success');
+                })
+                .catch((err) => {
+                    console.log(err);
+                    Swal.fire('แชร์ไม่สำเร็จ', err.message, 'error');
+                });
+        });
+
+        function buildStatRow(label, count, percent, color) {
+            return {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                    { type: "text", text: label, size: "sm", color: "#555555", flex: 2 },
+                    { type: "text", text: `${count} (${percent}%)`, size: "sm", color: color, align: "end", flex: 3, weight: "bold" }
+                ]
+            };
+        }
+
+        function getColorForStatus(status) {
+            if (status === 'มา') return '#10B981';
+            if (status === 'ขาด') return '#EF4444';
+            if (status === 'ลา') return '#F59E0B';
+            return '#F97316';
+        }
+
+        function fireConfetti() {
+            var count = 200;
+            var defaults = {
+                origin: { y: 0.7 }
+            };
+
+            function fire(particleRatio, opts) {
+                confetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(count * particleRatio)
+                }));
+            }
+
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+        }
+    </script>
 </body>
 </html>
